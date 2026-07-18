@@ -12,6 +12,14 @@ test.use({
   video: { mode: 'on', size: { width: 1440, height: 900 } },
 });
 
+// Asset generator, not part of the CI suite. It assumes a fresh, empty bridge
+// (records the demo GIF from the empty state onward); in CI the bridge is
+// shared across parallel test files, so the empty state is already gone. Run
+// it locally (CI unset) to regenerate the walkthrough video.
+test.beforeEach(() => {
+  test.skip(!!process.env.CI, 'asset generator — run locally, not in CI');
+});
+
 test('walkthrough: a workflow comes to life', async ({ page, request }) => {
   await page.goto('/');
   // Empty state — the two front doors.

@@ -21,6 +21,14 @@ async function selectSession(page: Page, sessionId: string) {
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 
+// Asset generators, not part of the CI suite. They assume a fresh, empty
+// bridge; in CI a single bridge is shared across parallel test files, so a
+// prior file's demo/session leaves the empty state gone. Run them locally
+// (CI unset) to regenerate README assets.
+test.beforeEach(() => {
+  test.skip(!!process.env.CI, 'asset generator — run locally, not in CI');
+});
+
 test('capture: empty state (dark)', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: /run the demo/i })).toBeVisible();
