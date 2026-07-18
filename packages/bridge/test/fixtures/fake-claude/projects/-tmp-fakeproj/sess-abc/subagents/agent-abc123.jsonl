@@ -1,0 +1,1 @@
+{"type":"assistant","timestamp":"2026-07-17T12:00:03.000Z","sessionId":"sess-abc","agentId":"abc123","isSidechain":true,"uuid":"su1","parentUuid":null,"message":{"id":"msg_sub1","role":"assistant","model":"claude-haiku-4-5-20251001","content":[{"type":"text","text":"Sub agent says hello."}],"stop_reason":"end_turn","usage":{"input_tokens":5,"output_tokens":3}}}

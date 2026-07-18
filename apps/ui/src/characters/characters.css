@@ -1,0 +1,1071 @@
+/*
+ * Crew character pack — all motion lives here.
+ *
+ * Rules (docs/CHARACTER_SYSTEM.md):
+ * - transform/opacity only, GPU-composited, no JS animation loops
+ * - ambient loops: period >= 3s, breathe <= 2% scale, body tilt <= 2deg
+ * - one-shots (completed/failed) run once, gated by .vw-char-once
+ * - reduced motion: every loop freezes to a readable static pose
+ */
+
+/* ---------------------------------- root ---------------------------------- */
+
+.vw-char {
+  --vwc-ink: #1a1f2a;
+  display: inline-block;
+  line-height: 0;
+}
+
+.vw-char .vwc-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* --------------------------------- parts ---------------------------------- */
+
+.vw-char .vwc-shadow {
+  fill: #000;
+  opacity: 0.32;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.vw-char .vwc-puppet {
+  transform-box: fill-box;
+  transform-origin: 50% 92%;
+  transition: opacity 0.45s ease;
+}
+
+.vw-char .vwc-body {
+  fill: var(--vwc-tint, #5b8dd9);
+  stroke: color-mix(in srgb, var(--vwc-tint, #5b8dd9) 60%, #10131a);
+  stroke-width: 1.4;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.vw-char .vwc-sheen {
+  fill: #fff;
+  opacity: 0.12;
+}
+
+.vw-char .vwc-arm {
+  transform-box: fill-box;
+  transform-origin: 50% 14%;
+}
+
+.vw-char .vwc-arm rect {
+  fill: color-mix(in srgb, var(--vwc-tint, #5b8dd9) 70%, #10131a);
+}
+
+.vw-char .vwc-eyes,
+.vw-char .vwc-eyes-round {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.vw-char .vwc-eyes-round circle {
+  fill: var(--vwc-ink);
+}
+
+.vw-char .vwc-eyes-round .vwc-glint {
+  fill: #fff;
+  opacity: 0.92;
+}
+
+.vw-char .vwc-lid {
+  fill: var(--vwc-tint, #5b8dd9);
+}
+
+.vw-char .vwc-eyes-happy path,
+.vw-char .vwc-eyes-x path,
+.vw-char .vwc-eyes-closed path,
+.vw-char .vwc-mouth {
+  fill: none;
+  stroke: var(--vwc-ink);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+}
+
+/* ------------------------------- accessories ------------------------------- */
+
+.vw-char .vwc-acc-line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--vwc-tint, #5b8dd9) 55%, #10131a);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.vw-char .vwc-acc-tip {
+  fill: var(--vwc-tint, #5b8dd9);
+  stroke: color-mix(in srgb, var(--vwc-tint, #5b8dd9) 55%, #10131a);
+  stroke-width: 1.2;
+}
+
+.vw-char .vwc-notepad {
+  fill: #f2edde;
+  stroke: #b9ae93;
+  stroke-width: 1;
+}
+
+.vw-char .vwc-notepad-lines,
+.vw-char .vwc-page-lines {
+  fill: none;
+  stroke: #b9ae93;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.vw-char .vwc-visor,
+.vw-char .vwc-strap,
+.vw-char .vwc-deck {
+  fill: #232936;
+  opacity: 0.9;
+}
+
+.vw-char .vwc-visor-sheen {
+  fill: #5ee1ff;
+  opacity: 0.5;
+}
+
+.vw-char .vwc-deck-key {
+  fill: #93a0b6;
+}
+
+.vw-char .vwc-goggle {
+  fill: rgb(240 247 255 / 25%);
+  stroke: #232936;
+  stroke-width: 1.8;
+}
+
+.vw-char .vwc-flask {
+  fill: #eef7f5;
+  opacity: 0.92;
+  stroke: #3f6f66;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+}
+
+.vw-char .vwc-flask-liquid {
+  fill: var(--vwc-tint, #a082e0);
+  opacity: 0.85;
+}
+
+.vw-char .vwc-flask-lip {
+  fill: #3f6f66;
+}
+
+.vw-char .vwc-monocle {
+  fill: none;
+  stroke: #e3c36b;
+  stroke-width: 1.7;
+}
+
+.vw-char .vwc-monocle-chain {
+  fill: none;
+  stroke: #e3c36b;
+  stroke-width: 1.1;
+}
+
+.vw-char .vwc-mag-glass {
+  fill: rgb(170 200 255 / 28%);
+  stroke: #4a5163;
+  stroke-width: 1.8;
+}
+
+.vw-char .vwc-mag-handle {
+  fill: none;
+  stroke: #4a5163;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+/* ------------------------------ fx base styles ----------------------------- */
+
+/* every effect is hidden until its state switches it on */
+.vw-char .vwc-fx > * {
+  opacity: 0;
+}
+
+.vw-char .vwc-fx text {
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-weight: 700;
+  fill: #9aa3b8;
+}
+
+.vw-char .vwc-fx-orbit {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.vw-char .vwc-fx-orbit circle {
+  fill: #b3a2f5;
+}
+
+.vw-char .vwc-page {
+  fill: #f2edde;
+  stroke: #b9ae93;
+  stroke-width: 1;
+}
+
+.vw-char .vwc-scanline {
+  fill: var(--vwc-tint, #5b8dd9);
+  opacity: 0.85;
+}
+
+.vw-char .vwc-fx-beam {
+  fill: #ffe9a8;
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+}
+
+.vw-char .vwc-tick {
+  font-size: 7.5px;
+  fill: #8fd0ff;
+}
+
+.vw-char .vwc-fx-pulse circle,
+.vw-char .vwc-fx-arc,
+.vw-char .vwc-fx-ring {
+  fill: none;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.vw-char .vwc-fx-pulse circle {
+  stroke: var(--vwc-tint, #5b8dd9);
+  stroke-width: 1.5;
+}
+
+.vw-char .vwc-fx-arc {
+  stroke: var(--vwc-tint, #5b8dd9);
+  stroke-width: 1.6;
+  stroke-dasharray: 8 45;
+  stroke-linecap: round;
+}
+
+.vw-char .vwc-fx-ring {
+  stroke: #ffb64d;
+  stroke-width: 1.4;
+}
+
+.vw-char .vwc-fx-bub circle {
+  fill: #bfe8e0;
+}
+
+.vw-char .vwc-z-1 {
+  font-size: 6px;
+}
+
+.vw-char .vwc-z-2 {
+  font-size: 8px;
+}
+
+.vw-char .vwc-alert-bubble {
+  fill: #ffb64d;
+  stroke: #a8721c;
+  stroke-width: 1.2;
+}
+
+.vw-char .vwc-alert-tail {
+  fill: #ffb64d;
+}
+
+.vw-char .vwc-alert-mark {
+  fill: #3a2a10;
+}
+
+.vw-char .vwc-hand-bubble {
+  fill: #f2f5fa;
+  stroke: #8a93a6;
+  stroke-width: 1.1;
+}
+
+.vw-char .vwc-hand-tail {
+  fill: #f2f5fa;
+  stroke: #8a93a6;
+  stroke-width: 1.1;
+}
+
+.vw-char .vwc-hand-glyph rect {
+  fill: #39415a;
+}
+
+.vw-char .vwc-fx-smoke circle {
+  fill: #a7aebc;
+}
+
+.vw-char .vwc-cf {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* ----------------------- hidden-by-default face parts ---------------------- */
+
+.vw-char .vwc-eyes-happy,
+.vw-char .vwc-eyes-x,
+.vw-char .vwc-eyes-closed,
+.vw-char .vwc-lid,
+.vw-char .vwc-mouth-frown,
+.vw-char .vwc-mouth-flat {
+  opacity: 0;
+}
+
+/* ------------------------------ ambient motion ----------------------------- */
+
+.vw-char .vwc-eyes-round {
+  animation: vwc-blink 4.4s ease-in-out infinite;
+}
+
+.vw-char[data-state='idle'] .vwc-body,
+.vw-char[data-state='waiting'] .vwc-body {
+  animation: vwc-breathe 3.4s ease-in-out infinite;
+}
+
+/* -------------------------------- state: waiting --------------------------- */
+
+.vw-char[data-state='waiting'] .vwc-eyes {
+  animation: vwc-gaze 8s ease-in-out infinite;
+}
+
+.vw-char[data-state='waiting'] .vwc-fx-z {
+  opacity: 0.65;
+}
+
+.vw-char[data-state='waiting'] .vwc-z-1 {
+  animation: vwc-zz-a 8s ease-in-out infinite;
+}
+
+.vw-char[data-state='waiting'] .vwc-z-2 {
+  animation: vwc-zz-b 8s ease-in-out infinite;
+}
+
+/* -------------------------------- state: thinking -------------------------- */
+
+.vw-char[data-state='thinking'] .vwc-puppet {
+  transform: rotate(2deg);
+}
+
+.vw-char[data-state='thinking'] .vwc-lid {
+  opacity: 1;
+}
+
+.vw-char[data-state='thinking'] .vwc-eyes {
+  animation: vwc-drift 5s ease-in-out infinite;
+}
+
+.vw-char[data-state='thinking'] .vwc-fx-orbit {
+  opacity: 1;
+  animation: vwc-orbit 6s linear infinite;
+}
+
+/* -------------------------------- state: reading --------------------------- */
+
+.vw-char[data-state='reading'] .vwc-puppet {
+  transform: rotate(-2deg) translateY(0.6px);
+}
+
+.vw-char[data-state='reading'] .vwc-eyes {
+  animation: vwc-scan 3.2s ease-in-out infinite;
+}
+
+.vw-char[data-state='reading'] .vwc-fx-read {
+  opacity: 1;
+}
+
+.vw-char[data-state='reading'] .vwc-scanline {
+  animation: vwc-scanline 3.2s linear infinite;
+}
+
+/* -------------------------------- state: searching ------------------------- */
+
+.vw-char[data-state='searching'] .vwc-puppet {
+  animation: vwc-bounce 3.2s ease-in-out infinite;
+}
+
+.vw-char[data-state='searching'] .vwc-eyes-round {
+  animation: none; /* wide awake — no blink while scanning */
+}
+
+.vw-char[data-state='searching'] .vwc-eyes {
+  animation: vwc-dart 3.4s ease-in-out infinite;
+}
+
+.vw-char[data-state='searching'] .vwc-fx-beam {
+  opacity: 0.38;
+  animation: vwc-beam 3.6s ease-in-out infinite;
+}
+
+/* ------------------------------ state: writing_code ------------------------ */
+
+.vw-char[data-state='writing_code'] .vwc-eyes {
+  transform: translateY(1.6px);
+}
+
+.vw-char[data-state='writing_code'] .vwc-puppet {
+  animation: vwc-type 3s linear infinite;
+}
+
+.vw-char[data-state='writing_code'] .vwc-fx-code {
+  opacity: 1;
+}
+
+.vw-char[data-state='writing_code'] .vwc-tick {
+  opacity: 0.8;
+}
+
+.vw-char[data-state='writing_code'] .vwc-tick-1 {
+  animation: vwc-tick-a 3s linear infinite;
+}
+
+.vw-char[data-state='writing_code'] .vwc-tick-2 {
+  animation: vwc-tick-b 3s linear infinite;
+}
+
+.vw-char[data-state='writing_code'] .vwc-tick-3 {
+  animation: vwc-tick-c 3s linear infinite;
+}
+
+/* ---------------------------- state: running_command ----------------------- */
+
+.vw-char[data-state='running_command'] .vwc-puppet {
+  animation: vwc-hum 3s linear infinite;
+}
+
+.vw-char[data-state='running_command'] .vwc-fx-pulse {
+  opacity: 1;
+}
+
+.vw-char[data-state='running_command'] .vwc-pulse-1 {
+  opacity: 0.35;
+  animation: vwc-pulse-a 3.2s ease-out infinite;
+}
+
+.vw-char[data-state='running_command'] .vwc-pulse-2 {
+  opacity: 0.35;
+  animation: vwc-pulse-b 3.2s ease-out infinite;
+}
+
+/* -------------------------------- state: testing --------------------------- */
+
+.vw-char[data-state='testing'] .vwc-lid-r {
+  opacity: 1; /* one-eye squint */
+}
+
+.vw-char[data-state='testing'] .vwc-fx-bub {
+  opacity: 1;
+}
+
+.vw-char[data-state='testing'] .vwc-fx-bub circle {
+  opacity: 0.7;
+}
+
+.vw-char[data-state='testing'] .vwc-bub-1 {
+  animation: vwc-bub-a 3s ease-in infinite;
+}
+
+.vw-char[data-state='testing'] .vwc-bub-2 {
+  animation: vwc-bub-b 3s ease-in infinite;
+}
+
+.vw-char[data-state='testing'] .vwc-bub-3 {
+  animation: vwc-bub-c 3s ease-in infinite;
+}
+
+/* ------------------------------- state: reviewing -------------------------- */
+
+.vw-char[data-state='reviewing'] .vwc-puppet {
+  animation: vwc-nod 3.6s ease-in-out infinite;
+}
+
+.vw-char[data-state='reviewing'] .vwc-fx-arc {
+  opacity: 0.75;
+  animation: vwc-orbit 4.8s linear infinite;
+}
+
+/* -------------------------------- state: blocked --------------------------- */
+/* calm alarm: static pose, no loops beyond blink */
+
+.vw-char[data-state='blocked'] .vwc-lid {
+  opacity: 1;
+}
+
+.vw-char[data-state='blocked'] .vwc-mouth-smile {
+  opacity: 0;
+}
+
+.vw-char[data-state='blocked'] .vwc-mouth-flat {
+  opacity: 1;
+}
+
+.vw-char[data-state='blocked'] .vwc-arm-l {
+  transform: rotate(-56deg) translate(5px, -2px);
+}
+
+.vw-char[data-state='blocked'] .vwc-arm-r {
+  transform: rotate(56deg) translate(-5px, -2px);
+}
+
+.vw-char[data-state='blocked'] .vwc-fx-alert {
+  opacity: 1;
+}
+
+/* --------------------------- state: awaiting_approval ---------------------- */
+
+.vw-char[data-state='awaiting_approval'] .vwc-eyes {
+  transform: scale(1.14); /* pleading, extra-big */
+}
+
+.vw-char[data-state='awaiting_approval'] .vwc-arm-r {
+  transform: rotate(172deg); /* hand raised */
+}
+
+.vw-char[data-state='awaiting_approval'] .vwc-fx-hand {
+  opacity: 1;
+}
+
+.vw-char[data-state='awaiting_approval'] .vwc-fx-ring {
+  opacity: 0.3;
+  animation: vwc-ring 3.2s ease-in-out infinite;
+}
+
+/* --------------------------------- state: failed --------------------------- */
+
+.vw-char[data-state='failed'] .vwc-puppet {
+  transform: rotate(4deg) translateY(1.2px); /* slump */
+}
+
+.vw-char[data-state='failed'] .vwc-eyes-round {
+  opacity: 0;
+  animation: none;
+}
+
+.vw-char[data-state='failed'] .vwc-eyes-x {
+  opacity: 1;
+}
+
+.vw-char[data-state='failed'] .vwc-mouth-smile {
+  opacity: 0;
+}
+
+.vw-char[data-state='failed'] .vwc-mouth-frown {
+  opacity: 1;
+}
+
+.vw-char.vw-char-once[data-state='failed'] .vwc-fx-smoke {
+  animation: vwc-once-smoke 700ms ease-out 1;
+}
+
+/* -------------------------------- state: completed ------------------------- */
+
+.vw-char[data-state='completed'] .vwc-eyes-round {
+  opacity: 0;
+  animation: none;
+}
+
+.vw-char[data-state='completed'] .vwc-eyes-happy {
+  opacity: 1;
+}
+
+.vw-char[data-state='completed'] .vwc-fx-confetti {
+  opacity: 1;
+}
+
+.vw-char.vw-char-once[data-state='completed'] .vwc-puppet {
+  animation: vwc-once-hop 520ms cubic-bezier(0.34, 1.4, 0.42, 1) 1;
+}
+
+.vw-char.vw-char-once[data-state='completed'] .vwc-cf {
+  animation: vwc-once-confetti 620ms ease-out 1;
+}
+
+/* per-particle burst vectors */
+.vw-char .vwc-cf-1 {
+  --dx: -15px;
+  --dy: -13px;
+}
+.vw-char .vwc-cf-2 {
+  --dx: -11px;
+  --dy: -18px;
+}
+.vw-char .vwc-cf-3 {
+  --dx: -7px;
+  --dy: -11px;
+}
+.vw-char .vwc-cf-4 {
+  --dx: -4px;
+  --dy: -19px;
+}
+.vw-char .vwc-cf-5 {
+  --dx: -1px;
+  --dy: -13px;
+}
+.vw-char .vwc-cf-6 {
+  --dx: 2px;
+  --dy: -20px;
+}
+.vw-char .vwc-cf-7 {
+  --dx: 5px;
+  --dy: -12px;
+}
+.vw-char .vwc-cf-8 {
+  --dx: 8px;
+  --dy: -17px;
+}
+.vw-char .vwc-cf-9 {
+  --dx: 12px;
+  --dy: -11px;
+}
+.vw-char .vwc-cf-10 {
+  --dx: 15px;
+  --dy: -16px;
+}
+.vw-char .vwc-cf-11 {
+  --dx: -13px;
+  --dy: -7px;
+}
+.vw-char .vwc-cf-12 {
+  --dx: 13px;
+  --dy: -6px;
+}
+
+/* -------------------------------- state: cancelled ------------------------- */
+
+.vw-char[data-state='cancelled'] .vwc-puppet {
+  opacity: 0.45;
+  transform: rotate(1deg) translateY(0.8px); /* powered down */
+}
+
+.vw-char[data-state='cancelled'] .vwc-shadow {
+  opacity: 0.18;
+}
+
+.vw-char[data-state='cancelled'] .vwc-eyes-round {
+  opacity: 0;
+  animation: none;
+}
+
+.vw-char[data-state='cancelled'] .vwc-eyes-closed {
+  opacity: 1;
+}
+
+.vw-char[data-state='cancelled'] .vwc-mouth-smile {
+  opacity: 0;
+}
+
+.vw-char[data-state='cancelled'] .vwc-mouth-flat {
+  opacity: 1;
+}
+
+/* --------------------------------- keyframes ------------------------------- */
+
+@keyframes vwc-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.98) scaleX(1.01);
+  }
+}
+
+@keyframes vwc-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  93%,
+  96% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes vwc-gaze {
+  0%,
+  55%,
+  100% {
+    transform: translate(0, 0);
+  }
+  62%,
+  80% {
+    transform: translate(-2px, -1.5px);
+  }
+}
+
+@keyframes vwc-zz-a {
+  0%,
+  55% {
+    opacity: 0;
+    transform: translate(0, 2px);
+  }
+  63% {
+    opacity: 0.9;
+    transform: translate(0.5px, 0);
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: translate(2px, -4px);
+  }
+}
+
+@keyframes vwc-zz-b {
+  0%,
+  60% {
+    opacity: 0;
+    transform: translate(0, 2px);
+  }
+  68% {
+    opacity: 0.9;
+    transform: translate(0.5px, 0);
+  }
+  88%,
+  100% {
+    opacity: 0;
+    transform: translate(2.5px, -4.5px);
+  }
+}
+
+@keyframes vwc-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vwc-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(1.5px, 0.5px);
+  }
+}
+
+@keyframes vwc-scan {
+  0%,
+  100% {
+    transform: translate(-1.8px, 0);
+  }
+  45%,
+  55% {
+    transform: translate(1.8px, 0);
+  }
+}
+
+@keyframes vwc-scanline {
+  0% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  90% {
+    transform: translateY(7.5px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(7.5px);
+    opacity: 0;
+  }
+}
+
+@keyframes vwc-dart {
+  0%,
+  18% {
+    transform: translate(-2px, -0.5px);
+  }
+  24%,
+  45% {
+    transform: translate(2px, 0);
+  }
+  52%,
+  70% {
+    transform: translate(-1px, 1px);
+  }
+  76%,
+  100% {
+    transform: translate(1.5px, -1px);
+  }
+}
+
+@keyframes vwc-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes vwc-beam {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: rotate(10deg);
+    opacity: 0.5;
+  }
+}
+
+@keyframes vwc-type {
+  0%,
+  8%,
+  16%,
+  26%,
+  40%,
+  52%,
+  64%,
+  78%,
+  100% {
+    transform: translateY(0);
+  }
+  4%,
+  12%,
+  22%,
+  34%,
+  46%,
+  58%,
+  72% {
+    transform: translateY(-0.8px);
+  }
+}
+
+@keyframes vwc-tick-a {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  8% {
+    opacity: 0.9;
+    transform: translateY(1px);
+  }
+  40%,
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes vwc-tick-b {
+  0%,
+  33% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  41% {
+    opacity: 0.9;
+    transform: translateY(1px);
+  }
+  73%,
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes vwc-tick-c {
+  0%,
+  66% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  74% {
+    opacity: 0.9;
+    transform: translateY(1px);
+  }
+  98%,
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes vwc-hum {
+  0%,
+  40%,
+  100% {
+    transform: translate(0, 0);
+  }
+  5% {
+    transform: translate(0.5px, 0);
+  }
+  15% {
+    transform: translate(-0.5px, 0);
+  }
+  25% {
+    transform: translate(0.4px, 0);
+  }
+  35% {
+    transform: translate(-0.3px, 0);
+  }
+}
+
+@keyframes vwc-pulse-a {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.5;
+  }
+  60%,
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+@keyframes vwc-pulse-b {
+  0%,
+  45% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  95%,
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+@keyframes vwc-bub-a {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  15% {
+    opacity: 0.85;
+  }
+  55%,
+  100% {
+    opacity: 0;
+    transform: translateY(-9px) scale(1);
+  }
+}
+
+@keyframes vwc-bub-b {
+  0%,
+  30% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  45% {
+    opacity: 0.85;
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: translateY(-9px) scale(1);
+  }
+}
+
+@keyframes vwc-bub-c {
+  0%,
+  55% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  70% {
+    opacity: 0.85;
+  }
+  98%,
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(1);
+  }
+}
+
+@keyframes vwc-nod {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(1.5deg);
+  }
+  60% {
+    transform: rotate(-0.5deg);
+  }
+}
+
+@keyframes vwc-ring {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+
+/* one-shots */
+
+@keyframes vwc-once-hop {
+  0% {
+    transform: translateY(0) scaleY(1);
+  }
+  18% {
+    transform: translateY(0.6px) scaleY(0.94);
+  }
+  48% {
+    transform: translateY(-5px) scaleY(1.04);
+  }
+  78% {
+    transform: translateY(0) scaleY(0.97);
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes vwc-once-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, -12px)) rotate(140deg);
+  }
+}
+
+@keyframes vwc-once-smoke {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.5);
+  }
+  25% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(1.3);
+  }
+}
+
+/* ------------------------------ reduced motion ----------------------------- */
+/* Freeze every loop; static poses set above must carry the state on their own. */
+
+@media (prefers-reduced-motion: reduce) {
+  .vw-char,
+  .vw-char * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+[data-reduced-motion='true'] .vw-char,
+[data-reduced-motion='true'] .vw-char * {
+  animation: none !important;
+  transition: none !important;
+}

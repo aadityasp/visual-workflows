@@ -1,0 +1,43 @@
+{
+  "name": "visual-workflows-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A live, animated command center for AI coding agent workflows",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "start": "npm run build -w @visual-workflows/ui && npm run start -w @visual-workflows/bridge -- --open",
+    "serve": "npm run build -w @visual-workflows/ui && npm run start -w @visual-workflows/bridge",
+    "vw": "npm run start -w @visual-workflows/bridge --",
+    "dev": "concurrently -n bridge,ui -c blue,green \"npm run dev -w @visual-workflows/bridge\" \"npm run dev -w @visual-workflows/ui\"",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "check:ts-version": "node -e \"const v=require('typescript/package.json').version; if(!v.startsWith('6.')){console.error('typescript must stay on 6.x (typescript-eslint peer range); found '+v);process.exit(1)}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.61.1",
+    "concurrently": "10.0.3",
+    "eslint": "10.7.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.64.0"
+  },
+  "overrides": {
+    "jsdom": "26.1.0"
+  }
+}

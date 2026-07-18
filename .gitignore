@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# test artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# runtime data (never commit observed sessions or recordings)
+recordings/
+*.local.json
+.vw-token
+
+# environment / secrets
+.env
+.env.*
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.log

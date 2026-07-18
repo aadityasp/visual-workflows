@@ -1,0 +1,54 @@
+name: Feature request
+description: Propose an improvement or new capability
+title: '[feat] '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check docs/ROADMAP.md first — your idea may already be planned (or an explicit
+        non-goal, like driving agents from the UI).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where you missed this feature, not just the feature itself.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen. Sketches and screenshots welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Canvas / UI
+        - Characters / animation
+        - Claude Code adapter
+        - Other adapters (Codex, OTEL, ...)
+        - Bridge / CLI
+        - Replay / recordings
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Sanity checks
+      options:
+        - label: I checked docs/ROADMAP.md and existing issues for duplicates
+          required: true
+        - label: This does not require the app to drive or steer agents (a standing non-goal)
+          required: false

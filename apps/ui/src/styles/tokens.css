@@ -1,0 +1,113 @@
+/*
+ * Design tokens — the "quiet operations room" palette (docs/UI_SPEC.md).
+ * Dark is primary; [data-theme='light'] overrides with the same structure
+ * and semantic hues at AA contrast. Semantic accents only; the role accent
+ * tints the character, never the panel.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --vw-bg: #0b0e14;
+  --vw-bg-canvas: #0c1017;
+  --vw-bg-elev: #0f131c;
+  --vw-panel: #141a25;
+  --vw-panel-2: #1a2131;
+  --vw-panel-hover: #1d2536;
+  --vw-hairline: rgba(255, 255, 255, 0.07);
+  --vw-border: #262f40;
+  --vw-border-strong: #33405a;
+
+  /* Translucent panel surface (glass). Falls back to solid --vw-panel where
+     backdrop-filter is unsupported or transparency is reduced. */
+  --vw-glass: rgba(20, 26, 37, 0.72);
+  --vw-glass-blur: blur(10px) saturate(1.2);
+
+  --vw-text: #e6eaf2;
+  --vw-text-dim: #8a93a6;
+  --vw-text-faint: #59617a;
+
+  --vw-running: #4cc2ff;
+  --vw-thinking: #a78bfa;
+  --vw-success: #3dd68c;
+  --vw-warn: #f5b94c;
+  --vw-danger: #f26d6d;
+  --vw-accent: #4cc2ff;
+
+  --vw-running-soft: rgba(76, 194, 255, 0.14);
+  --vw-thinking-soft: rgba(167, 139, 250, 0.14);
+  --vw-success-soft: rgba(61, 214, 140, 0.14);
+  --vw-warn-soft: rgba(245, 185, 76, 0.15);
+  --vw-danger-soft: rgba(242, 109, 109, 0.15);
+
+  --vw-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --vw-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --vw-focus-ring: 0 0 0 2px var(--vw-bg), 0 0 0 4px var(--vw-accent);
+
+  --vw-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --vw-font-mono:
+    ui-monospace, 'JetBrains Mono', 'SF Mono', 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  --vw-radius: 12px;
+  --vw-radius-sm: 8px;
+  --vw-radius-chip: 999px;
+
+  --vw-topbar-h: 48px;
+  --vw-statusbar-h: 32px;
+  --vw-rail-w: 280px;
+
+  --vw-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --vw-dur-fast: 150ms;
+  --vw-dur: 200ms;
+  --vw-dur-slow: 250ms;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --vw-bg: #f2f4f8;
+  --vw-bg-canvas: #eef1f6;
+  --vw-bg-elev: #e8ecf3;
+  --vw-panel: #ffffff;
+  --vw-panel-2: #f4f6fa;
+  --vw-panel-hover: #eef1f7;
+  --vw-hairline: rgba(15, 20, 32, 0.07);
+  --vw-border: #d4dae4;
+  --vw-border-strong: #b6c0d0;
+
+  --vw-glass: rgba(255, 255, 255, 0.7);
+
+  --vw-text: #171d29;
+  --vw-text-dim: #55607a;
+  --vw-text-faint: #8892a6;
+
+  --vw-running: #0e7fc1;
+  --vw-thinking: #6d4fd0;
+  --vw-success: #1c9c62;
+  --vw-warn: #a9741a;
+  --vw-danger: #d24545;
+  --vw-accent: #0e7fc1;
+
+  --vw-running-soft: rgba(14, 127, 193, 0.12);
+  --vw-thinking-soft: rgba(109, 79, 208, 0.12);
+  --vw-success-soft: rgba(28, 156, 98, 0.12);
+  --vw-warn-soft: rgba(169, 116, 26, 0.14);
+  --vw-danger-soft: rgba(210, 69, 69, 0.12);
+
+  --vw-shadow: 0 6px 20px rgba(30, 40, 60, 0.12);
+  --vw-shadow-lg: 0 18px 48px rgba(30, 40, 60, 0.18);
+}
+
+/* Honor a reduced-transparency preference: make the glass surface solid so
+   panels (and the xterm background, which reads --vw-glass) stay opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  :root[data-theme='dark'] {
+    --vw-glass: #141a25;
+  }
+  :root[data-theme='light'] {
+    --vw-glass: #ffffff;
+  }
+}

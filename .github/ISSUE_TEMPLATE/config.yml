@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/aadityasp/visual-workflows/security/advisories/new
+    about: Please report security issues privately via GitHub Security Advisories, never as public issues.
+  - name: Questions & ideas
+    url: https://github.com/aadityasp/visual-workflows/discussions
+    about: For questions, show-and-tell (character packs!), and early-stage ideas.

@@ -1,0 +1,75 @@
+name: Bug report
+description: Something broke or rendered wrong
+title: '[bug] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Version details matter a lot here: the Claude Code
+        adapter is verified per Claude Code release, so please fill them in.
+
+        Do NOT report security issues here — see SECURITY.md for private reporting.
+  - type: input
+    id: vw-version
+    attributes:
+      label: visual-workflows version
+      description: From `npx visual-workflows --version`, the UI footer, or your git SHA.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 26.2 arm64 / Ubuntu 24.04 x64
+    validations:
+      required: true
+  - type: input
+    id: claude-code-version
+    attributes:
+      label: Claude Code version
+      description: From `claude --version`. Write "n/a" if the bug happens in demo/replay mode without Claude Code.
+      placeholder: 2.1.212
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode when the bug occurred
+      options:
+        - Demo mode
+        - Observing a real Claude Code session
+        - Replay of a recording
+        - CLI (connect/disconnect/start)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. npm run dev
+        2. Click "Run Demo"
+        3. Press `f` while an agent is completing
+        4. Camera jumps to origin
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / console output (optional)
+      description: |
+        Bridge terminal output and browser console errors help a lot.
+        Redact anything sensitive — transcripts and recordings can contain your code and paths.
+      render: text
+    validations:
+      required: false

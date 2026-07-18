@@ -1,0 +1,8 @@
+{
+  "name": "visual-workflows",
+  "displayName": "Visual Workflows",
+  "version": "0.1.0",
+  "description": "Live animated command center for Claude Code multi-agent workflows — forwards session, tool, and subagent telemetry to a local dashboard at http://127.0.0.1:4777.",
+  "commands": ["./commands/visual-workflows.md"],
+  "hooks": "./hooks/hooks.json"
+}
