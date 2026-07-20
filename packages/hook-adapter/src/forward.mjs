@@ -234,23 +234,34 @@ function detached(cmd, args, useShell, extraEnv) {
  * Open the dashboard. Prefer a Chromium-family *app window* (which the page
  * can later close itself for auto-close), falling back to a normal tab in the
  * default browser. All variants are tried in one detached shell command.
+ *
+ * The app window uses a dedicated --user-data-dir: without it, `open -na
+ * "Google Chrome" --app=...` silently no-ops when the user's main Chrome is
+ * already running (macOS routes to the existing instance and drops --app), so
+ * no window ever appears. A separate profile forces a real app instance every
+ * time, and window.close() works there for auto-close.
  */
 function openBrowser(url) {
   const p = process.platform;
+  const profile = join(DATA_DIR, 'browser');
+  const flags = `--user-data-dir="${profile}" --no-first-run --no-default-browser-check`;
   let cmd;
   if (p === 'darwin') {
     cmd =
-      `open -na "Google Chrome" --args --app="${url}" 2>/dev/null || ` +
-      `open -na "Brave Browser" --args --app="${url}" 2>/dev/null || ` +
-      `open -na "Microsoft Edge" --args --app="${url}" 2>/dev/null || ` +
+      `open -na "Google Chrome" --args --app="${url}" ${flags} 2>/dev/null || ` +
+      `open -na "Brave Browser" --args --app="${url}" ${flags} 2>/dev/null || ` +
+      `open -na "Microsoft Edge" --args --app="${url}" ${flags} 2>/dev/null || ` +
       `open "${url}"`;
   } else if (p === 'win32') {
-    cmd = `start "" chrome --app="${url}" || start "" msedge --app="${url}" || start "" "${url}"`;
+    cmd =
+      `start "" chrome --app="${url}" ${flags} || ` +
+      `start "" msedge --app="${url}" ${flags} || ` +
+      `start "" "${url}"`;
   } else {
     cmd =
-      `google-chrome --app="${url}" >/dev/null 2>&1 || ` +
-      `chromium --app="${url}" >/dev/null 2>&1 || ` +
-      `microsoft-edge --app="${url}" >/dev/null 2>&1 || ` +
+      `google-chrome --app="${url}" ${flags} >/dev/null 2>&1 || ` +
+      `chromium --app="${url}" ${flags} >/dev/null 2>&1 || ` +
+      `microsoft-edge --app="${url}" ${flags} >/dev/null 2>&1 || ` +
       `xdg-open "${url}" >/dev/null 2>&1`;
   }
   detached(cmd, undefined, true);

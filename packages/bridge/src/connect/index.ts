@@ -135,7 +135,10 @@ async function writeAutoOpenConfig(args: CliArgs): Promise<string> {
     autoOpen: true,
     autoClose: true,
     port: args.port ?? 4777,
-    startCommand: `npm --prefix "${root}" run serve`,
+    // serve:live builds the UI and starts the bridge WITH the transcript tailer
+    // (--watch-claude), so an auto-opened dashboard shows full agent detail
+    // (terminal output, files) instead of only thin hook events.
+    startCommand: `npm --prefix "${root}" run serve:live`,
   };
   // Restrictive perms, matching auth.ts (data dir 0700, files 0600): the
   // config can carry a repo path / port and is only ever read by this user.

@@ -188,6 +188,11 @@ describe('runAutoOpen (forward.mjs auto-open side effects)', () => {
     expect(spawnMock).toHaveBeenCalledTimes(1);
     // The auto-managed dashboard URL (the #vw=auto marker) is what gets opened.
     expect(String(spawnMock.mock.calls[0]![0])).toContain('#vw=auto');
+    // App-window mode must use a dedicated --user-data-dir so a window opens
+    // reliably even when the user's main browser is already running (macOS
+    // otherwise drops --app for a second same-profile instance — the window
+    // never appears). Regression guard for that exact bug.
+    expect(String(spawnMock.mock.calls[0]![0])).toContain('--user-data-dir');
 
     // A second spawn in the same session must NOT re-claim or re-open.
     runAutoOpen(payload);
