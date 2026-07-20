@@ -81,9 +81,15 @@ export function computeLayout(items: LayoutItem[], links: LayoutLink[]): Record<
 
 /**
  * Re-flow any over-crowded rank (a set of nodes sharing an x, i.e. dagre's
- * single vertical column) into a roughly-square grid, shifting later ranks
- * right to make room. Mutates `centers` in place. A rank with ≤ threshold nodes
- * is untouched, so small graphs are identical to plain dagre.
+ * single vertical column) into a compact block, shifting later ranks right to
+ * make room. Mutates `centers` in place. A rank with ≤ threshold nodes is
+ * untouched, so small graphs are identical to plain dagre.
+ *
+ * The block is shelf-packed by each node's actual size: full-size (running)
+ * panels are laid out first so the active work stays prominent, then the small
+ * completed chips pack densely below — so a session with a few running agents
+ * and dozens of finished ones reads as "here's what's live, and here's the
+ * compressed history", not one undifferentiated wall.
  */
 function regridCrowdedRanks(centers: Map<string, Center>): void {
   // Group nodes by rank. In LR layout every node in a rank shares one x center.
@@ -105,38 +111,66 @@ function regridCrowdedRanks(centers: Map<string, Center>): void {
     // read it live rather than trusting the original bucket key.
     const rankX = centers.get(members[0]!)!.x;
 
-    // Preserve dagre's crossing-minimized order (top→bottom) within the grid.
-    members.sort((a, b) => centers.get(a)!.y - centers.get(b)!.y);
-
-    const n = members.length;
-    const cols = Math.ceil(Math.sqrt(n));
-    const rows = Math.ceil(n / cols);
-    let maxW = 0;
-    let maxH = 0;
     let sumY = 0;
+    let maxW = 0;
+    let tallest = 0;
     for (const id of members) {
       const c = centers.get(id)!;
-      maxW = Math.max(maxW, c.w);
-      maxH = Math.max(maxH, c.h);
       sumY += c.y;
+      maxW = Math.max(maxW, c.w);
+      tallest = Math.max(tallest, c.h);
     }
-    const cellW = maxW + GRID_GAP;
-    const cellH = maxH + GRID_GAP;
-    const centerY = sumY / n; // keep the grid centered where the column was
+    const centerY = sumY / members.length; // re-center the block on the column
 
-    // Column 0 stays at the rank's x; the grid grows rightward and is centered
-    // vertically on the old column's midpoint.
-    for (let i = 0; i < n; i += 1) {
-      const c = centers.get(members[i]!)!;
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      c.x = rankX + col * cellW;
-      c.y = centerY + (row - (rows - 1) / 2) * cellH;
+    // Order: full-size panels first (prominent), compact chips after; within
+    // each group keep dagre's crossing-minimized top→bottom order.
+    const isChip = (id: string) => centers.get(id)!.h < tallest - 0.5;
+    members.sort((a, b) => {
+      const ca = isChip(a) ? 1 : 0;
+      const cb = isChip(b) ? 1 : 0;
+      if (ca !== cb) return ca - cb;
+      return centers.get(a)!.y - centers.get(b)!.y;
+    });
+
+    // Band width ≈ a roughly-square grid of the widest (full-size) cell, so full
+    // panels get ~√n columns while the narrower chips pack more per row.
+    const cols = Math.max(1, Math.ceil(Math.sqrt(members.length)));
+    const bandW = cols * (maxW + GRID_GAP);
+
+    // Shelf-pack left→right, wrapping when a row would exceed bandW; each row is
+    // as tall as its tallest member, so chip rows stay short and dense.
+    const topLeft = new Map<string, XY>();
+    let cx = 0;
+    let cy = 0;
+    let rowH = 0;
+    let blockRight = 0;
+    for (const id of members) {
+      const c = centers.get(id)!;
+      if (cx > 0 && cx + c.w > bandW) {
+        cy += rowH + GRID_GAP;
+        cx = 0;
+        rowH = 0;
+      }
+      topLeft.set(id, { x: cx, y: cy });
+      cx += c.w + GRID_GAP;
+      rowH = Math.max(rowH, c.h);
+      blockRight = Math.max(blockRight, cx - GRID_GAP);
+    }
+    const blockBottom = cy + rowH;
+
+    // Anchor the block's left at rankX, centered vertically on the old column;
+    // convert each node's top-left slot to a center.
+    const blockTop = centerY - blockBottom / 2;
+    for (const id of members) {
+      const c = centers.get(id)!;
+      const tl = topLeft.get(id)!;
+      c.x = rankX + tl.x + c.w / 2;
+      c.y = blockTop + tl.y + c.h / 2;
     }
 
-    // Make room: push every node strictly to the right of this rank over by the
-    // extra width the grid introduced, so later ranks never overlap the grid.
-    const extraWidth = (cols - 1) * cellW;
+    // Push every node to the right of this rank over by the extra width the
+    // block introduced beyond dagre's single column, so nothing overlaps.
+    const extraWidth = Math.max(0, blockRight - maxW / 2);
     if (extraWidth > 0) {
       const memberSet = new Set(members);
       for (const [id, c] of centers) {

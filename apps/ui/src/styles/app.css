@@ -743,7 +743,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 360px;
+  width: 240px;
   height: 56px;
   padding: 0 12px;
   background: var(--vw-glass);

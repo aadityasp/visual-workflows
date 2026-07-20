@@ -23,6 +23,7 @@ import {
   summarizeToolInput,
   truncate,
 } from '@visual-workflows/protocol';
+import type { SessionStartedPayload } from '@visual-workflows/protocol';
 import type { Adapter, AdapterContext, EventInit } from '../types.js';
 import { makeEvent } from '../types.js';
 import { sniffAgentRole } from '../claude-roles.js';
@@ -273,7 +274,20 @@ export function createTranscriptAdapter(config?: TranscriptAdapterConfig): Adapt
       workflowCapNoticed: false,
     };
     sessions.set(entry.sessionId, t);
-    // First sight of a session: materialize the main agent.
+    // First sight of a session: announce it (so the picker and the window title
+    // show the project name, not a raw id), then materialize the main agent.
+    const projectName =
+      entry.cwd
+        .replace(/[/\\]+$/, '')
+        .split(/[/\\]/)
+        .pop() || entry.sessionId;
+    emit(
+      makeEvent(
+        'session_started',
+        { ts: nowTs(), source: 'transcript', sessionId: entry.sessionId },
+        { title: projectName, cwd: entry.cwd } as SessionStartedPayload,
+      ),
+    );
     emit(
       makeEvent(
         'agent_created',

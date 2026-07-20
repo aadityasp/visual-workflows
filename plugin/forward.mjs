@@ -280,9 +280,12 @@ export function runAutoOpen(payload) {
   const info = readBridgeInfo();
   const port = (info && info.port) || config.port || PORT;
   const base = (info && info.url) || `http://127.0.0.1:${port}`;
-  // The #vw=auto marker tells the UI this window is auto-managed, so it can
-  // follow the live session and offer to close itself when the run ends.
-  const url = `${String(base).replace(/\/$/, '')}/#vw=auto`;
+  // The #vw=auto marker tells the UI this window is auto-managed (follow the
+  // session, offer to close when the run ends). The session id pins THIS window
+  // to the session that spawned it, so parallel sessions each get their own
+  // scoped window instead of all sharing one global view.
+  const sessionParam = sessionId ? `&session=${encodeURIComponent(sessionId)}` : '';
+  const url = `${String(base).replace(/\/$/, '')}/#vw=auto${sessionParam}`;
 
   // At session start, if the bridge is down and we know how to start it, do so
   // once — so it is ready by the time the first agent spawns.

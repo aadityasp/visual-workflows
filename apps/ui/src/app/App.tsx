@@ -27,9 +27,31 @@ import { useWorkspace } from '../store/workspace';
 import { useSessions } from '../store/sessions';
 import { activeSession, agentCycleOrder, unresolvedAttention } from '../store/selectors';
 
+/**
+ * A window the forwarder opens is pinned to one session via `#vw=auto&session=<id>`,
+ * so parallel Claude sessions each get their own scoped window instead of all
+ * sharing one global "live" view.
+ */
+function pinnedSessionId(): string | null {
+  try {
+    const m = /[#&]session=([^&]+)/.exec(window.location.hash || '');
+    return m && m[1] ? decodeURIComponent(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 function autoSelect(sessions: SessionSummary[]): void {
   const ui = useUi.getState();
   if (ui.activeSessionId || isReplaying(ui)) return;
+  const pin = pinnedSessionId();
+  if (pin) {
+    // Session-scoped window: wait for ITS session to appear, and never fall
+    // back to a different one — this window belongs to that session only.
+    const hit = sessions.find((s) => s.sessionId === pin);
+    if (hit) ui.setActiveSession(hit.sessionId);
+    return;
+  }
   const pick = sessions.find((s) => s.active) ?? sessions[0];
   if (pick) ui.setActiveSession(pick.sessionId);
 }
@@ -227,6 +249,19 @@ export function App() {
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-reduced-motion', String(reduced));
   }, [theme, reduced]);
+
+  // Window/tab title = the session's project (basename of its cwd, else its
+  // title), so parallel auto-opened windows are distinguishable at a glance in
+  // the OS window list / dock, not all named "visual-workflows".
+  const projectLabel = useWorkspace((s) => {
+    const sess = activeSession(s.state, activeSessionId);
+    if (!sess) return null;
+    const base = sess.cwd ? sess.cwd.replace(/\/+$/, '').split('/').pop() : undefined;
+    return base || sess.title || null;
+  });
+  useEffect(() => {
+    document.title = projectLabel ? `${projectLabel} · visual-workflows` : 'visual-workflows';
+  }, [projectLabel]);
 
   // Track the system reduced-motion preference.
   useEffect(() => {

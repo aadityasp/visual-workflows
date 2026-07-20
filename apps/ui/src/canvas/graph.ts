@@ -11,6 +11,9 @@ import type { XY } from './layout';
 import { agentCollapsed } from '../store/ui';
 
 export const CHIP_H = 56;
+/** A collapsed (completed/minimized) agent is narrow as well as short, so many
+ * pack densely while running agents keep full-size prominence. */
+export const CHIP_W = 240;
 const BAND_PAD = 44;
 
 export interface AgentNodeData extends Record<string, unknown> {
@@ -34,6 +37,11 @@ export type PhaseBandNode = Node<PhaseBandData, 'phaseBand'>;
 /** A collapsed (minimized or completed) agent is a compact chip; others keep height. */
 export function nodeHeight(collapsed: boolean): number {
   return collapsed ? CHIP_H : PANEL_H;
+}
+
+/** A collapsed agent is also narrow, so crowded ranks of done chips pack tight. */
+export function nodeWidth(collapsed: boolean): number {
+  return collapsed ? CHIP_W : PANEL_W;
 }
 
 /** A stable string that changes only when the graph's shape or sizing does. */
@@ -60,11 +68,10 @@ export function buildGraph(
   const items = session.agentOrder
     .map((id) => session.agents[id])
     .filter((a): a is NonNullable<typeof a> => Boolean(a))
-    .map((a) => ({
-      id: a.id,
-      width: PANEL_W,
-      height: nodeHeight(agentCollapsed(collapsed, a.id, a.lifecycle)),
-    }));
+    .map((a) => {
+      const isCollapsed = agentCollapsed(collapsed, a.id, a.lifecycle);
+      return { id: a.id, width: nodeWidth(isCollapsed), height: nodeHeight(isCollapsed) };
+    });
 
   const links = Object.values(session.deps).map((d) => ({ from: d.fromAgentId, to: d.toAgentId }));
   const laid = computeLayout(items, links);
@@ -109,14 +116,16 @@ function buildPhaseBands(
     const a = session.agents[id];
     if (!a?.phase) continue;
     const p = posOf(id);
-    const h = nodeHeight(agentCollapsed(collapsed, a.id, a.lifecycle));
+    const isCollapsed = agentCollapsed(collapsed, a.id, a.lifecycle);
+    const h = nodeHeight(isCollapsed);
+    const w = nodeWidth(isCollapsed);
     const box = byPhase.get(a.phase);
     if (!box) {
-      byPhase.set(a.phase, { minX: p.x, minY: p.y, maxX: p.x + PANEL_W, maxY: p.y + h });
+      byPhase.set(a.phase, { minX: p.x, minY: p.y, maxX: p.x + w, maxY: p.y + h });
     } else {
       box.minX = Math.min(box.minX, p.x);
       box.minY = Math.min(box.minY, p.y);
-      box.maxX = Math.max(box.maxX, p.x + PANEL_W);
+      box.maxX = Math.max(box.maxX, p.x + w);
       box.maxY = Math.max(box.maxY, p.y + h);
     }
   }
