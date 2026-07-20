@@ -101,6 +101,15 @@ function regridCrowdedRanks(centers: Map<string, Center>): void {
     else byRank.set(key, [id]);
   }
 
+  // Center every re-gridded block on one shared vertical axis (the graph's mean
+  // y). Otherwise each crowded rank centers on its own column's midpoint and
+  // consecutive fan-outs stair-step apart, leaving a big gap and a long edge
+  // fan between "what's running" and "what's done". A shared axis stacks the
+  // bands so successive ranks sit directly across from each other.
+  let gSumY = 0;
+  for (const [, c] of centers) gSumY += c.y;
+  const centerY = centers.size > 0 ? gSumY / centers.size : 0;
+
   // Process ranks left→right so cumulative right-shifts compose correctly.
   const rankKeys = [...byRank.keys()].sort((a, b) => a - b);
   for (const key of rankKeys) {
@@ -111,16 +120,13 @@ function regridCrowdedRanks(centers: Map<string, Center>): void {
     // read it live rather than trusting the original bucket key.
     const rankX = centers.get(members[0]!)!.x;
 
-    let sumY = 0;
     let maxW = 0;
     let tallest = 0;
     for (const id of members) {
       const c = centers.get(id)!;
-      sumY += c.y;
       maxW = Math.max(maxW, c.w);
       tallest = Math.max(tallest, c.h);
     }
-    const centerY = sumY / members.length; // re-center the block on the column
 
     // Order: full-size panels first (prominent), compact chips after; within
     // each group keep dagre's crossing-minimized top→bottom order.

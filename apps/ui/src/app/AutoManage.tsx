@@ -10,11 +10,36 @@
  * the browser blocks it, so we fall back to a clear "safe to close" message.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { SessionState } from '@visual-workflows/protocol';
+import { MAIN_AGENT_ID } from '@visual-workflows/protocol';
 import { useWorkspace } from '../store/workspace';
 import { useUi } from '../store/ui';
 import { activeSession } from '../store/selectors';
+import { TERMINAL_LIFECYCLES } from '../canvas/status';
 
 const COUNTDOWN_START = 5;
+
+/**
+ * Where a session's *workflow* (its spawned subagents, ignoring the always-on
+ * main agent) stands:
+ *   'none'    — no subagents spawned (nothing to auto-close for)
+ *   'running' — at least one subagent still working
+ *   'done'    — subagents spawned and all of them are terminal
+ * This is how we detect "the workflow finished" while the Claude session itself
+ * stays open, which is the case the auto-managed window closes on.
+ */
+function workflowPhase(session: SessionState): 'none' | 'running' | 'done' {
+  let subagents = 0;
+  let running = 0;
+  for (const id of session.agentOrder) {
+    const a = session.agents[id];
+    if (!a || a.kind === 'main' || id === MAIN_AGENT_ID) continue;
+    subagents += 1;
+    if (!TERMINAL_LIFECYCLES.has(a.lifecycle)) running += 1;
+  }
+  if (subagents === 0) return 'none';
+  return running > 0 ? 'running' : 'done';
+}
 
 export function isAutoManaged(): boolean {
   try {
@@ -50,40 +75,48 @@ export function AutoManage() {
     setPhase('idle');
   }, []);
 
-  // Detect the followed session's running -> ended transition via a store
-  // subscription (setState happens in the callback, not the effect body).
+  // Offer to close when the run this window opened for finishes — either its
+  // workflow's subagents all completed (session may stay open) or the whole
+  // session ended. Detected as transitions (not levels) via a store
+  // subscription, so a batch landing on "done" arms exactly once.
   useEffect(() => {
     if (!managed) return;
-    // Sessions we have actually witnessed running. We only offer to auto-close a
-    // session whose live end we saw (not one loaded already-ended for review).
-    const seenActive = new Set<string>();
+    // Previous observations per session, to detect the running->done edge.
+    const lastWf = new Map<string, 'none' | 'running' | 'done'>();
+    const lastActive = new Map<string, boolean>();
+
     const check = () => {
       const sessionId = useUi.getState().activeSessionId;
       const session = activeSession(useWorkspace.getState().state, sessionId);
       if (!session || !sessionId) return;
 
-      // A different session than the one we latched on is a fresh slate: clear
-      // the opt-out so its own end can arm.
+      const wf = workflowPhase(session);
+      const active = session.active;
+      const prevWf = lastWf.get(sessionId);
+      const prevActive = lastActive.get(sessionId);
+      lastWf.set(sessionId, wf);
+      lastActive.set(sessionId, active);
+
+      // A different session than the one we latched on is a fresh slate.
       if (armedSessionRef.current !== null && armedSessionRef.current !== sessionId) {
         dismissedRef.current = false;
         armedSessionRef.current = null;
       }
-
-      if (session.active) {
-        seenActive.add(sessionId);
-        // The session we armed is running again: a later end is a genuinely new
-        // transition, so drop the latch and allow re-arming.
-        if (armedSessionRef.current === sessionId) {
-          dismissedRef.current = false;
-          armedSessionRef.current = null;
-        }
-        return;
+      // New work started (a workflow (re)started): clear the opt-out and cancel
+      // any in-progress countdown — the run is no longer "done".
+      if (wf === 'running' && prevWf !== undefined && prevWf !== 'running') {
+        dismissedRef.current = false;
+        armedSessionRef.current = null;
+        setPhase((p) => (p === 'counting' ? 'idle' : p));
       }
 
-      const ended = Object.keys(session.agents).length > 0;
-      if (!ended || !seenActive.has(sessionId)) return;
-      if (dismissedRef.current) return; // sticky opt-out for this end
-      if (armedSessionRef.current === sessionId) return; // already armed, don't re-arm
+      // Two closeable edges: the workflow just finished, or the session just
+      // ended. Edges (not levels) mean a window loaded already-done never arms.
+      const workflowJustDone = wf === 'done' && prevWf === 'running';
+      const sessionJustEnded = active === false && prevActive === true;
+      if (!workflowJustDone && !sessionJustEnded) return;
+      if (dismissedRef.current) return; // sticky opt-out for this completion
+      if (armedSessionRef.current === sessionId) return; // already armed
       armedSessionRef.current = sessionId;
       setSecs(COUNTDOWN_START);
       setPhase('counting');
@@ -115,7 +148,7 @@ export function AutoManage() {
       <div className="vw-autoclose-card">
         {phase === 'counting' ? (
           <>
-            <div className="vw-autoclose-title">Session complete</div>
+            <div className="vw-autoclose-title">Run complete</div>
             <div className="vw-autoclose-sub">
               Closing this window in <b>{secs}s</b>.
             </div>
@@ -130,7 +163,7 @@ export function AutoManage() {
           </>
         ) : (
           <>
-            <div className="vw-autoclose-title">Session complete</div>
+            <div className="vw-autoclose-title">Run complete</div>
             <div className="vw-autoclose-sub">
               You can close this tab. (Your browser blocks auto-close for tabs it did not open;
               connect with an app window for true auto-close.)
