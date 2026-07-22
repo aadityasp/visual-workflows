@@ -28,16 +28,25 @@ type Raw = Record<string, unknown>;
 
 let dir: string;
 let settingsPath: string;
+let prevDataDir: string | undefined;
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'vw-connect-'));
   settingsPath = join(dir, 'settings.json');
+  // Isolate the data dir: runDisconnect() removes config.json from
+  // resolveDataDir(), which without this is the developer's REAL
+  // ~/.visual-workflows — so running the suite would wipe their auto-open
+  // config. Point every connect/disconnect test at a throwaway dir.
+  prevDataDir = process.env.VW_DATA_DIR;
+  process.env.VW_DATA_DIR = join(dir, 'data');
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (prevDataDir === undefined) delete process.env.VW_DATA_DIR;
+  else process.env.VW_DATA_DIR = prevDataDir;
   rmSync(dir, { recursive: true, force: true });
 });
 

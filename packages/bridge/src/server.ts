@@ -211,6 +211,24 @@ export async function startServer(opts: BridgeOptions = {}): Promise<BridgeServe
       return sendJson(res, 200, { ok: true, sessionId });
     }
 
+    if (p === '/api/auto-open/release') {
+      // An auto-managed window releases its open-claim as it closes, so the
+      // NEXT workflow spawn re-opens a fresh window (per-workflow open/close).
+      if (method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      if (!requireToken(req, token)) return sendJson(res, 401, { error: 'invalid token' });
+      const body = await readJsonBody(req, res, true);
+      if (!body.ok) {
+        if (!body.responded) sendJson(res, 400, { error: body.error });
+        return;
+      }
+      const sid =
+        body.value !== null && typeof body.value === 'object'
+          ? (body.value as { sessionId?: unknown }).sessionId
+          : undefined;
+      if (typeof sid === 'string' && sid.length > 0) releaseAutoOpenClaim(dataDir, sid);
+      return sendJson(res, 200, { ok: true });
+    }
+
     if (p === '/api/recordings') {
       if (method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await recorder.list());
@@ -473,6 +491,22 @@ function parsePort(raw: string | undefined): number | undefined {
  * or a mismatched port) is rejected. A missing/empty Host is rejected too —
  * every browser and fetch client sends one.
  */
+/**
+ * Delete a session's auto-open claim marker (under the bridge's own data dir,
+ * the same one the forwarder writes to) so the next spawn re-opens a fresh
+ * window. Path matches the forwarder's run/<sanitizedId>.opened exactly.
+ */
+export function releaseAutoOpenClaim(dataDir: string, sessionId: string): void {
+  const safe = String(sessionId)
+    .replace(/[^A-Za-z0-9_.-]/g, '_')
+    .slice(0, 120);
+  try {
+    fs.rmSync(path.join(dataDir, 'run', `${safe}.opened`), { force: true });
+  } catch {
+    /* best-effort: never let cleanup break the response */
+  }
+}
+
 export function isAllowedHost(host: string | undefined, port: number): boolean {
   if (host === undefined || host.length === 0) return false;
   let hostname = host;

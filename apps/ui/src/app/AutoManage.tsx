@@ -16,6 +16,7 @@ import { useWorkspace } from '../store/workspace';
 import { useUi } from '../store/ui';
 import { activeSession } from '../store/selectors';
 import { TERMINAL_LIFECYCLES } from '../canvas/status';
+import { apiUrl, authHeaders } from './config';
 
 const COUNTDOWN_START = 5;
 
@@ -182,6 +183,22 @@ export function AutoManage() {
 
 /** Try to close the window; if the browser refuses, run onBlocked shortly after. */
 function attemptClose(onBlocked: () => void): void {
+  // Release this window's open-claim first so the NEXT workflow spawn re-opens a
+  // fresh window (per-workflow open/close). Best-effort + keepalive so it lands
+  // even as the window closes; if it fails, the worst case is no re-open.
+  const sessionId = useUi.getState().activeSessionId;
+  if (sessionId) {
+    try {
+      void fetch(apiUrl('/api/auto-open/release'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ sessionId }),
+        keepalive: true,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
   try {
     window.close();
   } catch {

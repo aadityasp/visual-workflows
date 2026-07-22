@@ -461,3 +461,40 @@ describe('isAllowedOrigin', () => {
     expect(isAllowedOrigin('garbage')).toBe(false);
   });
 });
+
+describe('POST /api/auto-open/release', () => {
+  it('removes the session open-claim with a valid token; rejects a bad one', async () => {
+    const sessionId = 'release-s1';
+    const marker = path.join(tmp, 'run', `${sessionId}.opened`);
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, '1');
+
+    const bad = await fetch(`${server.url}/api/auto-open/release`, {
+      method: 'POST',
+      headers: { [TOKEN_HEADER]: 'not-the-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    expect(bad.status).toBe(401);
+    expect(fs.existsSync(marker)).toBe(true);
+
+    const ok = await fetch(`${server.url}/api/auto-open/release`, {
+      method: 'POST',
+      headers: { [TOKEN_HEADER]: server.token, 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    expect(ok.status).toBe(200);
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it('sanitizes the session id so it can never escape the run/ dir', async () => {
+    const outside = path.join(tmp, 'secret.txt');
+    fs.writeFileSync(outside, 'keep');
+    const res = await fetch(`${server.url}/api/auto-open/release`, {
+      method: 'POST',
+      headers: { [TOKEN_HEADER]: server.token, 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: '../../secret.txt' }),
+    });
+    expect(res.status).toBe(200);
+    expect(fs.existsSync(outside)).toBe(true); // separators are replaced, never traversed
+  });
+});
